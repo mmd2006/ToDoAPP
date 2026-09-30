@@ -1,0 +1,492 @@
+openapi: 3.0.3
+info:
+  title: ToDoAPP API
+  version: 1.0.0
+  description: |
+    RESTful task management API built with Go, Echo, MySQL, GORM,
+    MongoDB, JWT and bcrypt.
+servers:
+  - url: http://localhost:1323
+    description: Local development server
+
+tags:
+  - name: Health
+  - name: Authentication
+  - name: Tasks
+  - name: Admin
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      summary: API health check
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: ToDoAPP API is running
+
+  /signup:
+    post:
+      tags: [Authentication]
+      summary: Create a user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthInput'
+            example:
+              username: reza_test
+              password: '123456'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: user created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Login and receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthInput'
+            example:
+              username: reza_test
+              password: '123456'
+      responses:
+        '200':
+          description: JWT returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tasks:
+    post:
+      tags: [Tasks]
+      summary: Create a task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+            example:
+              title: Learn Go interfaces
+              description: Review interfaces and error handling
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    get:
+      tags: [Tasks]
+      summary: List tasks
+      description: Regular users receive their own tasks. Admins can receive all tasks.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/TaskLimit'
+      responses:
+        '200':
+          description: Task list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tasks/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [Tasks]
+      summary: Get a task by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags: [Tasks]
+      summary: Update a task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: task updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags: [Tasks]
+      summary: Delete a task
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: task deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/tasks:
+    get:
+      tags: [Admin]
+      summary: List all tasks as an admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/TaskLimit'
+      responses:
+        '200':
+          description: Task list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/login-activities:
+    get:
+      tags: [Admin]
+      summary: List login activities
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/LoginActivityLimit'
+      responses:
+        '200':
+          description: Login activity list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginActivityListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TaskId:
+      name: id
+      in: path
+      required: true
+      description: MongoDB ObjectID of the task
+      schema:
+        type: string
+        pattern: '^[a-fA-F0-9]{24}$'
+        example: 66b8f6c2a8c4f2a7d9e4b123
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Page number starting from 1
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    TaskLimit:
+      name: limit
+      in: query
+      required: false
+      description: Number of tasks per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    LoginActivityLimit:
+      name: limit
+      in: query
+      required: false
+      description: Number of login activities per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+
+  schemas:
+    AuthInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_]+$'
+          example: reza_test
+        password:
+          type: string
+          minLength: 6
+          format: password
+          example: '123456'
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+
+    TaskInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: Learn Go interfaces
+        description:
+          type: string
+          maxLength: 500
+          example: Review interfaces and error handling
+
+    TaskResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66b8f6c2a8c4f2a7d9e4b123
+        user_id:
+          type: string
+          example: 000000000000000000000001
+        title:
+          type: string
+          example: Learn Go interfaces
+        description:
+          type: string
+          example: Review interfaces and error handling
+        completed:
+          type: boolean
+          example: false
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: reza_test
+        role:
+          type: string
+          enum: [user, admin]
+          example: user
+
+    LoginActivity:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66b8f6c2a8c4f2a7d9e4b123
+        user_id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: reza_test
+        ip:
+          type: string
+          example: 127.0.0.1
+        user_agent:
+          type: string
+          example: PostmanRuntime/7.45.0
+        created_at:
+          type: string
+          format: date-time
+
+    LoginActivityListResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoginActivity'
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Authenticated user does not have the required role
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
